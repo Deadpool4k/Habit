@@ -19,14 +19,49 @@ COLOR_OPTIONS = [
 ICON_OPTIONS = ["⭐", "💪", "📚", "🏃", "💧", "🧘", "🎯", "🍎", "😴", "✍️", "🎵", "🌱"]
 
 
-class EditHabitsPage(ft.UserControl):
+class EditHabitsPage(ft.Column):
     """Page for managing (add / edit / delete) habits."""
 
-    def __init__(self, page: ft.Page):
-        super().__init__(expand=True)
-        self.page = page
+    def __init__(self, flet_page: ft.Page):
+        super().__init__(expand=True, spacing=0)
+        self._page = flet_page
         self._editing: Habit | None = None
         self._build_form_refs()
+
+        self._form_wrapper = ft.Container(
+            bgcolor=CARD,
+            border_radius=8,
+            padding=16,
+        )
+        self._list_col = ft.Column(spacing=8)
+
+        self._form_wrapper.content = self._build_form_content()
+        self._list_col.controls = self._build_habit_list()
+
+        body = ft.Column(
+            [
+                self._form_wrapper,
+                ft.Divider(color="#334155"),
+                ft.Text("Your Habits", color=TEXT, size=16, weight=ft.FontWeight.BOLD),
+                self._list_col,
+            ],
+            scroll=ft.ScrollMode.AUTO,
+            spacing=16,
+            expand=True,
+        )
+
+        self.controls = [
+            ft.Container(
+                bgcolor=CARD,
+                padding=ft.padding.symmetric(horizontal=20, vertical=12),
+                content=ft.Text("✏️ Edit Habits", color=TEXT, size=20, weight=ft.FontWeight.BOLD),
+            ),
+            ft.Container(
+                expand=True,
+                padding=16,
+                content=body,
+            ),
+        ]
 
     def _build_form_refs(self):
         self._name_ref = ft.Ref[ft.TextField]()
@@ -35,38 +70,9 @@ class EditHabitsPage(ft.UserControl):
         self._color_ref = ft.Ref[ft.Dropdown]()
         self._target_ref = ft.Ref[ft.TextField]()
         self._unit_ref = ft.Ref[ft.TextField]()
-        self._list_ref = ft.Ref[ft.Column]()
-
-    def build(self):
-        return ft.Column(
-            [
-                ft.Container(
-                    bgcolor=CARD,
-                    padding=ft.padding.symmetric(horizontal=20, vertical=12),
-                    content=ft.Text("✏️ Edit Habits", color=TEXT, size=20, weight=ft.FontWeight.BOLD),
-                ),
-                ft.Container(
-                    expand=True,
-                    padding=16,
-                    content=ft.Column(
-                        [
-                            self._build_form(),
-                            ft.Divider(color="#334155"),
-                            ft.Text("Your Habits", color=TEXT, size=16, weight=ft.FontWeight.BOLD),
-                            ft.Column(ref=self._list_ref, controls=self._build_habit_list(), spacing=8),
-                        ],
-                        scroll=ft.ScrollMode.AUTO,
-                        spacing=16,
-                        expand=True,
-                    ),
-                ),
-            ],
-            expand=True,
-            spacing=0,
-        )
 
     # ------------------------------------------------------------------
-    def _build_form(self) -> ft.Container:
+    def _build_form_content(self) -> ft.Column:
         title = "Edit Habit" if self._editing else "Add New Habit"
 
         name_field = ft.TextField(
@@ -158,19 +164,14 @@ class EditHabitsPage(ft.UserControl):
             else ft.Container()
         )
 
-        return ft.Container(
-            bgcolor=CARD,
-            border_radius=8,
-            padding=16,
-            content=ft.Column(
-                [
-                    ft.Text(title, color=TEXT, size=15, weight=ft.FontWeight.BOLD),
-                    ft.Row([name_field, type_dd], spacing=8),
-                    ft.Row([icon_dd, color_dd, target_field, unit_field], spacing=8),
-                    ft.Row([save_btn, cancel_btn], spacing=8),
-                ],
-                spacing=12,
-            ),
+        return ft.Column(
+            [
+                ft.Text(title, color=TEXT, size=15, weight=ft.FontWeight.BOLD),
+                ft.Row([name_field, type_dd], spacing=8),
+                ft.Row([icon_dd, color_dd, target_field, unit_field], spacing=8),
+                ft.Row([save_btn, cancel_btn], spacing=8),
+            ],
+            spacing=12,
         )
 
     def _build_habit_list(self) -> list:
@@ -206,14 +207,14 @@ class EditHabitsPage(ft.UserControl):
                         bgcolor=habit.color,
                     ),
                     ft.IconButton(
-                        icon=ft.icons.EDIT,
+                        icon=ft.Icons.EDIT,
                         icon_color=ACCENT,
                         icon_size=18,
                         tooltip="Edit",
                         on_click=lambda e, h=habit: self._on_edit(h),
                     ),
                     ft.IconButton(
-                        icon=ft.icons.DELETE_OUTLINE,
+                        icon=ft.Icons.DELETE_OUTLINE,
                         icon_color=DANGER,
                         icon_size=18,
                         tooltip="Delete",
@@ -267,14 +268,12 @@ class EditHabitsPage(ft.UserControl):
     def _on_delete(self, habit: Habit):
         def confirm_delete(e):
             habit_service.delete_habit(habit.id)
-            dialog.open = False
-            self.page.update()
+            self._page.close(dialog)
             self._rebuild()
             self._show_snack(f"'{habit.name}' deleted.")
 
         def cancel(e):
-            dialog.open = False
-            self.page.update()
+            self._page.close(dialog)
 
         dialog = ft.AlertDialog(
             title=ft.Text(f"Delete '{habit.name}'?", color=TEXT),
@@ -285,20 +284,19 @@ class EditHabitsPage(ft.UserControl):
                 ft.ElevatedButton("Delete", bgcolor=DANGER, color=TEXT, on_click=confirm_delete),
             ],
         )
-        self.page.dialog = dialog
-        dialog.open = True
-        self.page.update()
+        self._page.open(dialog)
 
     # ------------------------------------------------------------------
     def _rebuild(self):
         """Refresh form and list in-place."""
-        self.update()
+        self._form_wrapper.content = self._build_form_content()
+        self._form_wrapper.update()
+        self._list_col.controls = self._build_habit_list()
+        self._list_col.update()
 
     def _show_snack(self, msg: str, error: bool = False):
         snack = ft.SnackBar(
             content=ft.Text(msg, color=TEXT),
             bgcolor=DANGER if error else SUCCESS,
         )
-        self.page.snack_bar = snack
-        snack.open = True
-        self.page.update()
+        self._page.open(snack)

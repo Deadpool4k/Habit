@@ -13,7 +13,7 @@ CELL_W = 28
 CELL_H = 28
 
 
-class HabitRow(ft.UserControl):
+class HabitRow(ft.Row):
     """One row in the habit grid: name + icon + streak + day-cells."""
 
     def __init__(
@@ -25,7 +25,10 @@ class HabitRow(ft.UserControl):
         on_toggle,
         streak: int = 0,
     ):
-        super().__init__()
+        super().__init__(
+            spacing=8,
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+        )
         self.habit = habit
         self.year = year
         self.month = month
@@ -33,16 +36,15 @@ class HabitRow(ft.UserControl):
         self.on_toggle = on_toggle
         self.streak = streak
 
-    def build(self):
-        days_in_month = calendar.monthrange(self.year, self.month)[1]
+        days_in_month = calendar.monthrange(year, month)[1]
 
         def make_cell(day: int):
-            date_str = f"{self.year:04d}-{self.month:02d}-{day:02d}"
+            date_str = f"{year:04d}-{month:02d}-{day:02d}"
             done = date_str in self.completed_dates
             color = SUCCESS if done else CARD
 
-            def on_click(e, d=day, ds=date_str):
-                self.on_toggle(self.habit.id, ds)
+            def on_click(e, ds=date_str):
+                self.on_toggle(habit.id, ds)
 
             return ft.Container(
                 width=CELL_W,
@@ -60,9 +62,9 @@ class HabitRow(ft.UserControl):
             width=160,
             content=ft.Row(
                 [
-                    ft.Text(self.habit.icon, size=16),
+                    ft.Text(habit.icon, size=16),
                     ft.Text(
-                        self.habit.name,
+                        habit.name,
                         color=TEXT,
                         size=13,
                         overflow=ft.TextOverflow.ELLIPSIS,
@@ -70,7 +72,7 @@ class HabitRow(ft.UserControl):
                         expand=True,
                     ),
                     ft.Text(
-                        f"🔥{self.streak}",
+                        f"🔥{streak}",
                         size=11,
                         color="#fb923c",
                     ),
@@ -80,11 +82,7 @@ class HabitRow(ft.UserControl):
             ),
         )
 
-        return ft.Row(
-            [
-                name_col,
-                ft.Row(cells, spacing=2, scroll=ft.ScrollMode.AUTO),
-            ],
-            spacing=8,
-            vertical_alignment=ft.CrossAxisAlignment.CENTER,
-        )
+        self.controls = [
+            name_col,
+            ft.Row(cells, spacing=2, scroll=ft.ScrollMode.AUTO),
+        ]

@@ -14,7 +14,7 @@ DEFAULT_CONFIG = {
 def load_config() -> dict:
     """Load configuration from file, merging with defaults."""
     if os.path.exists(CONFIG_FILE):
-        with open(CONFIG_FILE, "r") as f:
+        with open(CONFIG_FILE, "r", encoding="utf-8") as f:
             data = json.load(f)
         for k, v in DEFAULT_CONFIG.items():
             if k not in data:
@@ -25,5 +25,5 @@ def load_config() -> dict:
 
 def save_config(config: dict) -> None:
     """Persist configuration to disk."""
-    with open(CONFIG_FILE, "w") as f:
-        json.dump(config, f, indent=2)
+    with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+        json.dump(config, f, indent=2, ensure_ascii=False)

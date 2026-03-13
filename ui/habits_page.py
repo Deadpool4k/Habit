@@ -23,44 +23,36 @@ MONTH_NAMES = [
 ]
 
 
-class HabitsPage(ft.UserControl):
+class HabitsPage(ft.Column):
     """Main habits tracking page with calendar grid and statistics."""
 
-    def __init__(self, page: ft.Page):
-        super().__init__(expand=True)
-        self.page = page
+    def __init__(self, flet_page: ft.Page):
+        super().__init__(expand=True, spacing=0)
+        self._page = flet_page
         today = date.today()
         self.current_year = today.year
         self.current_month = today.month
-        self._grid_ref = ft.Ref[ft.Column]()
-        self._progress_ref = ft.Ref[ft.Container]()
-        self._stats_ref = ft.Ref[ft.Column]()
-        self._heatmap_ref = ft.Ref[ft.Container]()
         self._month_label_ref = ft.Ref[ft.Text]()
 
-    # ------------------------------------------------------------------
-    def build(self):
-        return ft.Column(
-            [
-                self._build_header(),
-                ft.Container(
-                    expand=True,
-                    content=ft.Column(
-                        [
-                            self._build_grid_section(),
-                            self._build_progress_row(),
-                            self._build_stats_section(),
-                        ],
-                        scroll=ft.ScrollMode.AUTO,
-                        spacing=16,
-                        expand=True,
-                    ),
-                    padding=16,
-                ),
+        self._body = ft.Column(
+            controls=[
+                self._build_grid_section(),
+                self._build_progress_row(),
+                self._build_stats_section(),
             ],
+            scroll=ft.ScrollMode.AUTO,
+            spacing=16,
             expand=True,
-            spacing=0,
         )
+
+        self.controls = [
+            self._build_header(),
+            ft.Container(
+                expand=True,
+                content=self._body,
+                padding=16,
+            ),
+        ]
 
     # ------------------------------------------------------------------
     def _build_header(self):
@@ -73,7 +65,7 @@ class HabitsPage(ft.UserControl):
                     ft.Row(
                         [
                             ft.IconButton(
-                                icon=ft.icons.CHEVRON_LEFT,
+                                icon=ft.Icons.CHEVRON_LEFT,
                                 icon_color=TEXT,
                                 on_click=self._prev_month,
                             ),
@@ -87,7 +79,7 @@ class HabitsPage(ft.UserControl):
                                 text_align=ft.TextAlign.CENTER,
                             ),
                             ft.IconButton(
-                                icon=ft.icons.CHEVRON_RIGHT,
+                                icon=ft.Icons.CHEVRON_RIGHT,
                                 icon_color=TEXT,
                                 on_click=self._next_month,
                             ),
@@ -112,7 +104,7 @@ class HabitsPage(ft.UserControl):
                 content=ft.Text(
                     str(d), size=9, color="#94a3b8", text_align=ft.TextAlign.CENTER
                 ),
-                alignment=ft.alignment.center,
+                alignment=ft.alignment.Alignment(0, 0),
             )
             for d in range(1, days_in_month + 1)
         ]
@@ -144,7 +136,6 @@ class HabitsPage(ft.UserControl):
             border_radius=8,
             padding=12,
             content=ft.Column(
-                ref=self._grid_ref,
                 controls=[
                     ft.Text("Habit Grid", color=TEXT, size=14, weight=ft.FontWeight.BOLD),
                     header,
@@ -159,7 +150,6 @@ class HabitsPage(ft.UserControl):
         completed, total = habit_service.get_today_progress()
         circle = ProgressCircle(completed, total)
         return ft.Container(
-            ref=self._progress_ref,
             bgcolor=CARD,
             border_radius=8,
             padding=16,
@@ -193,7 +183,6 @@ class HabitsPage(ft.UserControl):
         heat = CalendarGrid(self.current_year, self.current_month, heatmap)
 
         return ft.Column(
-            ref=self._stats_ref,
             controls=[
                 ft.Container(
                     bgcolor=CARD,
@@ -251,8 +240,15 @@ class HabitsPage(ft.UserControl):
         self._refresh()
 
     def _refresh(self):
-        """Re-render by rebuilding the page content."""
-        if self.page:
-            # Trigger a full rebuild via parent
-            self.page.update()
-        self.update()
+        """Re-render the body sections after state changes."""
+        if self._month_label_ref.current:
+            self._month_label_ref.current.value = (
+                f"{MONTH_NAMES[self.current_month]} {self.current_year}"
+            )
+            self._month_label_ref.current.update()
+        self._body.controls = [
+            self._build_grid_section(),
+            self._build_progress_row(),
+            self._build_stats_section(),
+        ]
+        self._body.update()

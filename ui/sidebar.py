@@ -14,16 +14,20 @@ NAV_ITEMS = [
 ]
 
 
-class Sidebar(ft.UserControl):
+class Sidebar(ft.Container):
     """Left-side navigation panel."""
 
-    def __init__(self, on_navigate, current_page: str = "habits", *, ref=None):
-        super().__init__(ref=ref)
+    def __init__(self, on_navigate, current_page: str = "habits", **kwargs):
+        super().__init__(
+            width=160,
+            bgcolor=CARD,
+            expand=False,
+            **kwargs,
+        )
         self.on_navigate = on_navigate
         self.current_page = current_page
         self._item_refs: dict[str, ft.Ref] = {k: ft.Ref[ft.Container]() for k, _, _ in NAV_ITEMS}
 
-    def build(self):
         logo = ft.Container(
             padding=ft.padding.only(left=16, top=20, bottom=16),
             content=ft.Column(
@@ -44,14 +48,9 @@ class Sidebar(ft.UserControl):
 
         nav_buttons = [self._make_item(key, icon, label) for key, icon, label in NAV_ITEMS]
 
-        return ft.Container(
-            width=160,
-            bgcolor=CARD,
-            content=ft.Column(
-                [logo, ft.Divider(color="#334155", height=1)] + nav_buttons,
-                spacing=0,
-            ),
-            expand=False,
+        self.content = ft.Column(
+            [logo, ft.Divider(color="#334155", height=1)] + nav_buttons,
+            spacing=0,
         )
 
     def _make_item(self, key: str, icon: str, label: str) -> ft.Container:

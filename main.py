@@ -41,13 +41,10 @@ def main(page: ft.Page):
         content_area.current.content = content
         content_area.current.update()
 
-        # Update sidebar selection
-        sidebar_ref.current.update_selection(page_name)
-
-    sidebar_ref = ft.Ref[Sidebar]()
+        # Update sidebar selection using the direct Python reference
+        sidebar.update_selection(page_name)
 
     sidebar = Sidebar(
-        ref=sidebar_ref,
         on_navigate=navigate,
         current_page="habits",
     )

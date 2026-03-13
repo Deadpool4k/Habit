@@ -20,12 +20,12 @@ DANGER = "#ef4444"
 MOOD_EMOJIS = {1: "😔", 2: "😕", 3: "😐", 4: "🙂", 5: "😄"}
 
 
-class JournalPage(ft.UserControl):
+class JournalPage(ft.Column):
     """Daily journal entry with mood tracking and AI chat."""
 
-    def __init__(self, page: ft.Page):
-        super().__init__(expand=True)
-        self.page = page
+    def __init__(self, flet_page: ft.Page):
+        super().__init__(expand=True, spacing=0)
+        self._page = flet_page
         self.current_date = date.today().isoformat()
         self.entry = journal_service.get_or_create_entry(self.current_date)
         self.selected_mood = self.entry.mood
@@ -41,37 +41,32 @@ class JournalPage(ft.UserControl):
         self._send_btn_ref = ft.Ref[ft.IconButton]()
         self._date_ref = ft.Ref[ft.Text]()
 
-    def build(self):
-        return ft.Column(
-            [
-                ft.Container(
-                    bgcolor=CARD,
-                    padding=ft.padding.symmetric(horizontal=20, vertical=12),
-                    content=ft.Row(
-                        [
-                            ft.Text("📓 Journal", color=TEXT, size=20, weight=ft.FontWeight.BOLD),
-                            ft.Text(ref=self._date_ref, value=self.current_date, color="#94a3b8", size=13),
-                        ],
-                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                    ),
+        self.controls = [
+            ft.Container(
+                bgcolor=CARD,
+                padding=ft.padding.symmetric(horizontal=20, vertical=12),
+                content=ft.Row(
+                    [
+                        ft.Text("📓 Journal", color=TEXT, size=20, weight=ft.FontWeight.BOLD),
+                        ft.Text(ref=self._date_ref, value=self.current_date, color="#94a3b8", size=13),
+                    ],
+                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                 ),
-                ft.Container(
+            ),
+            ft.Container(
+                expand=True,
+                padding=16,
+                content=ft.Column(
+                    [
+                        self._build_journal_form(),
+                        self._build_chat_section(),
+                    ],
+                    scroll=ft.ScrollMode.AUTO,
+                    spacing=16,
                     expand=True,
-                    padding=16,
-                    content=ft.Column(
-                        [
-                            self._build_journal_form(),
-                            self._build_chat_section(),
-                        ],
-                        scroll=ft.ScrollMode.AUTO,
-                        spacing=16,
-                        expand=True,
-                    ),
                 ),
-            ],
-            expand=True,
-            spacing=0,
-        )
+            ),
+        ]
 
     # ------------------------------------------------------------------
     def _build_journal_form(self) -> ft.Container:
@@ -124,7 +119,7 @@ class JournalPage(ft.UserControl):
             "Save Entry",
             bgcolor=ACCENT,
             color=TEXT,
-            icon=ft.icons.SAVE,
+            icon=ft.Icons.SAVE,
             on_click=self._on_save,
         )
 
@@ -170,7 +165,7 @@ class JournalPage(ft.UserControl):
             border_radius=26,
             bgcolor=ACCENT if is_selected else "#334155",
             content=ft.Text(emoji, size=24, text_align=ft.TextAlign.CENTER),
-            alignment=ft.alignment.center,
+            alignment=ft.alignment.Alignment(0, 0),
             on_click=on_click,
             ink=True,
             tooltip=f"Mood {value}",
@@ -193,7 +188,7 @@ class JournalPage(ft.UserControl):
                 padding=12,
                 content=ft.Row(
                     [
-                        ft.Icon(ft.icons.WARNING_AMBER_ROUNDED, color="#f59e0b"),
+                        ft.Icon(ft.Icons.WARNING_AMBER_ROUNDED, color="#f59e0b"),
                         ft.Text(
                             "No OpenAI API key set. Visit Settings to enable AI chat.",
                             color="#94a3b8",
@@ -228,7 +223,7 @@ class JournalPage(ft.UserControl):
 
         send_btn = ft.IconButton(
             ref=self._send_btn_ref,
-            icon=ft.icons.SEND,
+            icon=ft.Icons.SEND,
             icon_color=ACCENT,
             tooltip="Send",
             on_click=self._on_send,
@@ -265,7 +260,7 @@ class JournalPage(ft.UserControl):
                 ),
                 padding=ft.padding.symmetric(horizontal=12, vertical=8),
                 content=ft.Text(content, color=TEXT, size=13, selectable=True),
-                alignment=ft.alignment.center_right if is_user else ft.alignment.center_left,
+                alignment=ft.alignment.Alignment(1, 0) if is_user else ft.alignment.Alignment(-1, 0),
                 margin=ft.margin.only(
                     left=60 if is_user else 0,
                     right=0 if is_user else 60,
@@ -286,9 +281,7 @@ class JournalPage(ft.UserControl):
         self.entry.energy_level = int(self._energy_ref.current.value or 3)
         journal_service.save_entry(self.entry)
         snack = ft.SnackBar(content=ft.Text("Journal entry saved!", color=TEXT), bgcolor=SUCCESS)
-        self.page.snack_bar = snack
-        snack.open = True
-        self.page.update()
+        self._page.open(snack)
 
     def _on_send(self, e):
         user_text = (self._chat_input_ref.current.value or "").strip()
@@ -315,7 +308,7 @@ class JournalPage(ft.UserControl):
             self._chat_list_ref.current.update()
 
         def call_ai():
-            reply = ai_service.send_message(user_text, self.page)
+            reply = ai_service.send_message(user_text, self._page)
             self._chat_messages.append({"role": "assistant", "content": reply})
             if self._chat_list_ref.current:
                 # Remove typing indicator
