@@ -4,6 +4,9 @@ import time
 from datetime import datetime
 from config import load_config
 
+REMINDER_COOLDOWN_SECONDS = 61  # avoids double-trigger within the same minute
+POLL_INTERVAL_SECONDS = 30
+
 
 class ReminderService:
     """Fires a callback at the configured reminder time each day."""
@@ -35,5 +38,5 @@ class ReminderService:
                         self._callback()
                     except Exception:
                         pass
-                time.sleep(61)  # avoid double-trigger within the same minute
-            time.sleep(30)
+                time.sleep(REMINDER_COOLDOWN_SECONDS)
+            time.sleep(POLL_INTERVAL_SECONDS)

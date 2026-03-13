@@ -17,7 +17,7 @@ NAV_ITEMS = [
 class Sidebar(ft.UserControl):
     """Left-side navigation panel."""
 
-    def __init__(self, on_navigate, current_page: str = "habits", ref=None):
+    def __init__(self, on_navigate, current_page: str = "habits", *, ref=None):
         super().__init__(ref=ref)
         self.on_navigate = on_navigate
         self.current_page = current_page

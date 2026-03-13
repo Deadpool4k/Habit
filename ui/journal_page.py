@@ -13,6 +13,7 @@ BG = "#0f172a"
 CARD = "#1e293b"
 ACCENT = "#6366f1"
 SUCCESS = "#22c55e"
+USER_BUBBLE = "#312e81"
 TEXT = "#f1f5f9"
 DANGER = "#ef4444"
 
@@ -187,7 +188,7 @@ class JournalPage(ft.UserControl):
 
         if not has_key:
             warning = ft.Container(
-                bgcolor="#1e293b",
+                bgcolor=CARD,
                 border_radius=8,
                 padding=12,
                 content=ft.Row(
@@ -256,7 +257,7 @@ class JournalPage(ft.UserControl):
             content = msg.get("content", "")
             is_user = role == "user"
             bubble = ft.Container(
-                bgcolor="#312e81" if is_user else "#1e293b",
+                bgcolor=USER_BUBBLE if is_user else CARD,
                 border_radius=ft.border_radius.only(
                     top_left=12, top_right=12,
                     bottom_left=0 if is_user else 12,
@@ -303,7 +304,7 @@ class JournalPage(ft.UserControl):
 
         # Show typing indicator
         typing_bubble = ft.Container(
-            bgcolor="#1e293b",
+            bgcolor=CARD,
             border_radius=8,
             padding=8,
             content=ft.Text("🤖 Thinking…", color="#94a3b8", size=12),
