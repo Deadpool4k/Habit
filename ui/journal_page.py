@@ -1,10 +1,9 @@
-"""Journal page — daily journal, mood, and AI chat."""
+"""Journal page — unified AI Coach Journal with chat."""
 import threading
 from datetime import date
 
 import flet as ft
 
-from models.journal_entry import JournalEntry
 from services import journal_service, ai_service
 import repositories.memory_repository as mem_repo
 from config import load_config
@@ -21,7 +20,7 @@ MOOD_EMOJIS = {1: "😔", 2: "😕", 3: "😐", 4: "🙂", 5: "😄"}
 
 
 class JournalPage(ft.Column):
-    """Daily journal entry with mood tracking and AI chat."""
+    """Unified journal + AI coach chat page."""
 
     def __init__(self, flet_page: ft.Page):
         super().__init__(expand=True, spacing=0)
@@ -30,6 +29,7 @@ class JournalPage(ft.Column):
         self.entry = journal_service.get_or_create_entry(self.current_date)
         self.selected_mood = self.entry.mood
         self._chat_messages: list[dict] = mem_repo.get_all_messages(limit=50)
+        self._thinking_bubble = None
 
         # Refs
         self._journal_ref = ft.Ref[ft.TextField]()
@@ -39,45 +39,42 @@ class JournalPage(ft.Column):
         self._chat_input_ref = ft.Ref[ft.TextField]()
         self._mood_row_ref = ft.Ref[ft.Row]()
         self._send_btn_ref = ft.Ref[ft.IconButton]()
-        self._date_ref = ft.Ref[ft.Text]()
-        self._thinking_bubble = None
+
+        config = load_config()
+        self._has_key = bool(config.get("openai_api_key", "").strip())
 
         self.controls = [
+            # Header bar
             ft.Container(
                 bgcolor=CARD,
                 padding=ft.padding.symmetric(horizontal=20, vertical=12),
                 content=ft.Row(
                     [
-                        ft.Text("📓 Journal", color=TEXT, size=20, weight=ft.FontWeight.BOLD),
-                        ft.Text(ref=self._date_ref, value=self.current_date, color="#94a3b8", size=13),
+                        ft.Text("📓 Journal & AI Coach", color=TEXT, size=20, weight=ft.FontWeight.BOLD),
+                        ft.Text(self.current_date, color="#94a3b8", size=13),
                     ],
                     alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                 ),
             ),
+            # Main body — single unified card
             ft.Container(
                 expand=True,
                 padding=16,
-                content=ft.Column(
-                    [
-                        self._build_journal_form(),
-                        self._build_chat_section(),
-                    ],
-                    scroll=ft.ScrollMode.AUTO,
-                    spacing=16,
-                    expand=True,
-                ),
+                content=self._build_unified_layout(),
             ),
         ]
 
-    # ------------------------------------------------------------------
-    def _build_journal_form(self) -> ft.Container:
-        text_field = ft.TextField(
+    def _build_unified_layout(self) -> ft.Column:
+        """Build the unified journal + chat layout as a single expandable Column."""
+
+        # --- Journal inputs (compact) ---
+        journal_field = ft.TextField(
             ref=self._journal_ref,
             value=self.entry.text,
             multiline=True,
-            min_lines=5,
-            max_lines=10,
-            hint_text="Write about your day…",
+            min_lines=3,
+            max_lines=5,
+            hint_text="Write about your day… (saved separately with Save Entry)",
             bgcolor=BG,
             color=TEXT,
             hint_style=ft.TextStyle(color="#475569"),
@@ -95,9 +92,7 @@ class JournalPage(ft.Column):
         stress_slider = ft.Slider(
             ref=self._stress_ref,
             value=self.entry.stress_level,
-            min=1,
-            max=5,
-            divisions=4,
+            min=1, max=5, divisions=4,
             label="{value}",
             active_color=ACCENT,
             thumb_color=ACCENT,
@@ -107,9 +102,7 @@ class JournalPage(ft.Column):
         energy_slider = ft.Slider(
             ref=self._energy_ref,
             value=self.entry.energy_level,
-            min=1,
-            max=5,
-            divisions=4,
+            min=1, max=5, divisions=4,
             label="{value}",
             active_color=SUCCESS,
             thumb_color=SUCCESS,
@@ -124,90 +117,51 @@ class JournalPage(ft.Column):
             on_click=self._on_save,
         )
 
-        return ft.Container(
+        journal_section = ft.Container(
             bgcolor=CARD,
             border_radius=8,
             padding=16,
             content=ft.Column(
                 [
-                    ft.Text("Today's Entry", color=TEXT, size=15, weight=ft.FontWeight.BOLD),
-                    text_field,
+                    ft.Text("Today's Entry", color=TEXT, size=14, weight=ft.FontWeight.BOLD),
+                    journal_field,
                     ft.Text("Mood", color="#94a3b8", size=12),
                     mood_buttons,
-                    ft.Row(
-                        [
-                            ft.Text("Stress:", color="#94a3b8", size=12, width=55),
-                            stress_slider,
-                        ]
-                    ),
-                    ft.Row(
-                        [
-                            ft.Text("Energy:", color="#94a3b8", size=12, width=55),
-                            energy_slider,
-                        ]
-                    ),
+                    ft.Row([
+                        ft.Text("Stress:", color="#94a3b8", size=12, width=55),
+                        stress_slider,
+                        ft.Text("Energy:", color="#94a3b8", size=12, width=55),
+                        energy_slider,
+                    ]),
                     save_btn,
                 ],
-                spacing=10,
+                spacing=8,
             ),
         )
 
-    def _mood_btn(self, value: int) -> ft.Container:
-        is_selected = value == self.selected_mood
-        emoji = MOOD_EMOJIS[value]
-
-        def on_click(e, v=value):
-            self.selected_mood = v
-            self._refresh_mood_row()
-
-        return ft.Container(
-            width=52,
-            height=52,
-            border_radius=26,
-            bgcolor=ACCENT if is_selected else "#334155",
-            content=ft.Text(emoji, size=24, text_align=ft.TextAlign.CENTER),
-            alignment=ft.alignment.Alignment(0, 0),
-            on_click=on_click,
-            ink=True,
-            tooltip=f"Mood {value}",
-        )
-
-    def _refresh_mood_row(self):
-        if self._mood_row_ref.current:
-            self._mood_row_ref.current.controls = [self._mood_btn(v) for v in range(1, 6)]
-            self._mood_row_ref.current.update()
-
-    # ------------------------------------------------------------------
-    def _build_chat_section(self) -> ft.Container:
-        config = load_config()
-        has_key = bool(config.get("openai_api_key", "").strip())
-
-        if not has_key:
+        # --- AI Chat section ---
+        if not self._has_key:
             warning = ft.Container(
-                bgcolor=CARD,
+                bgcolor="#1e293b",
                 border_radius=8,
-                padding=12,
-                content=ft.Row(
-                    [
-                        ft.Icon(ft.Icons.WARNING_AMBER_ROUNDED, color="#f59e0b"),
-                        ft.Text(
-                            "No OpenAI API key set. Visit Settings to enable AI chat.",
-                            color="#94a3b8",
-                            size=13,
-                        ),
-                    ],
-                    spacing=8,
-                ),
+                padding=10,
+                content=ft.Row([
+                    ft.Icon(ft.Icons.WARNING_AMBER_ROUNDED, color="#f59e0b"),
+                    ft.Text(
+                        "No OpenAI API key set. Visit Settings to enable AI chat.",
+                        color="#94a3b8", size=13,
+                    ),
+                ], spacing=8),
             )
         else:
-            warning = ft.Container()
+            warning = ft.Container(height=0)
 
         chat_history = ft.Column(
             ref=self._chat_list_ref,
             controls=self._build_message_bubbles(),
             spacing=8,
             scroll=ft.ScrollMode.AUTO,
-            height=300,
+            expand=True,
         )
 
         chat_input = ft.TextField(
@@ -228,32 +182,69 @@ class JournalPage(ft.Column):
             icon_color=ACCENT,
             tooltip="Send",
             on_click=self._on_send,
-            disabled=not has_key,
+            disabled=not self._has_key,
         )
 
-        return ft.Container(
+        chat_section = ft.Container(
             bgcolor=CARD,
             border_radius=8,
             padding=16,
+            expand=True,
             content=ft.Column(
                 [
-                    ft.Text("🤖 AI Coach Chat", color=TEXT, size=15, weight=ft.FontWeight.BOLD),
+                    ft.Text("🤖 AI Coach Chat", color=TEXT, size=14, weight=ft.FontWeight.BOLD),
                     warning,
                     chat_history,
+                    ft.Divider(color="#334155", height=1),
                     ft.Row([chat_input, send_btn], spacing=8),
                 ],
-                spacing=10,
+                spacing=8,
+                expand=True,
             ),
         )
 
+        return ft.Column(
+            [
+                journal_section,
+                chat_section,
+            ],
+            spacing=12,
+            expand=True,
+        )
+
+    def _mood_btn(self, value: int) -> ft.Container:
+        is_selected = value == self.selected_mood
+        emoji = MOOD_EMOJIS[value]
+
+        def on_click(e, v=value):
+            self.selected_mood = v
+            self._refresh_mood_row()
+
+        return ft.Container(
+            width=48,
+            height=48,
+            border_radius=24,
+            bgcolor=ACCENT if is_selected else "#334155",
+            content=ft.Text(emoji, size=22, text_align=ft.TextAlign.CENTER),
+            alignment=ft.alignment.Alignment(0, 0),
+            on_click=on_click,
+            ink=True,
+            tooltip=f"Mood {value}",
+        )
+
+    def _refresh_mood_row(self):
+        if self._mood_row_ref.current:
+            self._mood_row_ref.current.controls = [self._mood_btn(v) for v in range(1, 6)]
+            self._mood_row_ref.current.update()
+
     def _build_message_bubbles(self) -> list:
         bubbles = []
-        for msg in self._chat_messages[-30:]:
+        for msg in self._chat_messages[-50:]:
             role = msg.get("role", "user")
             content = msg.get("content", "")
             is_user = role == "user"
             bubble = ft.Container(
-                bgcolor=USER_BUBBLE if is_user else CARD,
+                bgcolor=USER_BUBBLE if is_user else "#273549",
                 border_radius=ft.border_radius.only(
                     top_left=12, top_right=12,
                     bottom_left=0 if is_user else 12,
@@ -281,7 +272,10 @@ class JournalPage(ft.Column):
         self.entry.stress_level = int(self._stress_ref.current.value or 3)
         self.entry.energy_level = int(self._energy_ref.current.value or 3)
         journal_service.save_entry(self.entry)
-        snack = ft.SnackBar(content=ft.Text("Journal entry saved!", color=TEXT), bgcolor=SUCCESS)
+        snack = ft.SnackBar(
+            content=ft.Text("Journal entry saved!", color=TEXT),
+            bgcolor=SUCCESS,
+        )
         self._page.snack_bar = snack
         self._page.snack_bar.open = True
         self._page.update()
@@ -295,16 +289,16 @@ class JournalPage(ft.Column):
         self._chat_input_ref.current.value = ""
         self._chat_input_ref.current.update()
 
-        # Disable send button to prevent double sends
+        # Disable send button
         if self._send_btn_ref.current:
             self._send_btn_ref.current.disabled = True
             self._send_btn_ref.current.update()
 
-        # Add user message to local list and refresh chat
+        # Add user message and refresh
         self._chat_messages.append({"role": "user", "content": user_text})
         self._refresh_chat()
 
-        # Add single thinking indicator AFTER refresh
+        # Add single thinking indicator
         self._thinking_bubble = ft.Container(
             bgcolor=CARD,
             border_radius=8,
@@ -315,12 +309,17 @@ class JournalPage(ft.Column):
         if self._chat_list_ref.current:
             self._chat_list_ref.current.controls.append(self._thinking_bubble)
             self._chat_list_ref.current.update()
+            # Scroll to bottom to show thinking indicator
+            try:
+                self._chat_list_ref.current.scroll_to(offset=-1, duration=200)
+            except Exception:
+                pass
 
         def call_ai():
             reply = ai_service.send_message(user_text, self._page)
             self._chat_messages.append({"role": "assistant", "content": reply})
             # Remove thinking bubble
-            if self._chat_list_ref.current and self._thinking_bubble in self._chat_list_ref.current.controls:
+            if self._chat_list_ref.current:
                 try:
                     self._chat_list_ref.current.controls.remove(self._thinking_bubble)
                 except ValueError:
@@ -337,3 +336,8 @@ class JournalPage(ft.Column):
         if self._chat_list_ref.current:
             self._chat_list_ref.current.controls = self._build_message_bubbles()
             self._chat_list_ref.current.update()
+            # Auto-scroll to bottom (latest message)
+            try:
+                self._chat_list_ref.current.scroll_to(offset=-1, duration=300)
+            except Exception:
+                pass
