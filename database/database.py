@@ -26,7 +26,7 @@ def init_db() -> None:
     """Initialize the database by executing schema.sql."""
     conn = get_connection()
     schema_path = os.path.join(os.path.dirname(__file__), "schema.sql")
-    with open(schema_path, "r") as f:
+    with open(schema_path, "r", encoding="utf-8") as f:
         schema = f.read()
     conn.executescript(schema)
     conn.commit()
