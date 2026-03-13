@@ -281,7 +281,9 @@ class JournalPage(ft.Column):
         self.entry.energy_level = int(self._energy_ref.current.value or 3)
         journal_service.save_entry(self.entry)
         snack = ft.SnackBar(content=ft.Text("Journal entry saved!", color=TEXT), bgcolor=SUCCESS)
-        self._page.open(snack)
+        self._page.snack_bar = snack
+        self._page.snack_bar.open = True
+        self._page.update()
 
     def _on_send(self, e):
         user_text = (self._chat_input_ref.current.value or "").strip()

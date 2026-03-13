@@ -268,12 +268,14 @@ class EditHabitsPage(ft.Column):
     def _on_delete(self, habit: Habit):
         def confirm_delete(e):
             habit_service.delete_habit(habit.id)
-            self._page.close(dialog)
+            dialog.open = False
+            self._page.update()
             self._rebuild()
             self._show_snack(f"'{habit.name}' deleted.")
 
         def cancel(e):
-            self._page.close(dialog)
+            dialog.open = False
+            self._page.update()
 
         dialog = ft.AlertDialog(
             title=ft.Text(f"Delete '{habit.name}'?", color=TEXT),
@@ -284,7 +286,9 @@ class EditHabitsPage(ft.Column):
                 ft.ElevatedButton("Delete", bgcolor=DANGER, color=TEXT, on_click=confirm_delete),
             ],
         )
-        self._page.open(dialog)
+        self._page.dialog = dialog
+        dialog.open = True
+        self._page.update()
 
     # ------------------------------------------------------------------
     def _rebuild(self):
@@ -299,4 +303,6 @@ class EditHabitsPage(ft.Column):
             content=ft.Text(msg, color=TEXT),
             bgcolor=DANGER if error else SUCCESS,
         )
-        self._page.open(snack)
+        self._page.snack_bar = snack
+        self._page.snack_bar.open = True
+        self._page.update()

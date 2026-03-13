@@ -199,11 +199,13 @@ class SettingsPage(ft.Column):
     def _on_clear_chat(self, e):
         def do_clear(ev):
             mem_repo.clear_messages()
-            self._page.close(dialog)
+            dialog.open = False
+            self._page.update()
             self._show_snack("Chat history cleared.")
 
         def cancel(ev):
-            self._page.close(dialog)
+            dialog.open = False
+            self._page.update()
 
         dialog = ft.AlertDialog(
             title=ft.Text("Clear chat history?", color=TEXT),
@@ -214,7 +216,9 @@ class SettingsPage(ft.Column):
                 ft.ElevatedButton("Clear", bgcolor=DANGER, color=TEXT, on_click=do_clear),
             ],
         )
-        self._page.open(dialog)
+        self._page.dialog = dialog
+        dialog.open = True
+        self._page.update()
 
     def _on_export_json(self, e):
         conn = get_connection()
@@ -251,4 +255,6 @@ class SettingsPage(ft.Column):
             content=ft.Text(msg, color=TEXT),
             bgcolor=DANGER if error else SUCCESS,
         )
-        self._page.open(snack)
+        self._page.snack_bar = snack
+        self._page.snack_bar.open = True
+        self._page.update()
