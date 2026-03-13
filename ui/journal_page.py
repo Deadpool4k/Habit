@@ -1,4 +1,4 @@
-"""Journal page — mood tracking + AI coach chat."""
+"""Journal page — mood tracking + AI coach chat."
 import threading
 from datetime import date
 
@@ -240,27 +240,15 @@ class JournalPage(ft.Column):
             )
         return bubbles
 
-    def _scroll_to_bottom(self):
-        """Scroll chat to the bottom — compatible with all Flet versions."""
+    async def _scroll_to_bottom(self):
+        """Scroll chat to bottom — always async, called via page.run_task."""
         col = self._chat_list_ref.current
         if col is None:
             return
-        # Try the async variant first (Flet >= 0.21), fall back to sync
-        if hasattr(col, "scroll_to_async"):
-            self._page.run_task(self._scroll_to_bottom_async)
-        elif hasattr(col, "scroll_to"):
-            try:
-                col.scroll_to(offset=-1, duration=300)
-            except Exception:
-                pass
-
-    async def _scroll_to_bottom_async(self):
-        col = self._chat_list_ref.current
-        if col is not None:
-            try:
-                await col.scroll_to_async(offset=-1, duration=300)
-            except Exception:
-                pass
+        try:
+            await col.scroll_to_async(offset=-1, duration=300)
+        except Exception:
+            pass
 
     # ──────────────────────────────────────────────────────────────────
     def _on_save_mood(self, e):
@@ -306,7 +294,7 @@ class JournalPage(ft.Column):
         if self._chat_list_ref.current:
             self._chat_list_ref.current.controls.append(self._thinking_bubble)
             self._chat_list_ref.current.update()
-            self._scroll_to_bottom()
+            self._page.run_task(self._scroll_to_bottom)
 
         def call_ai():
             reply = ai_service.send_message(user_text, self._page)
@@ -327,4 +315,4 @@ class JournalPage(ft.Column):
         if self._chat_list_ref.current:
             self._chat_list_ref.current.controls = self._build_message_bubbles()
             self._chat_list_ref.current.update()
-            self._scroll_to_bottom()
+            self._page.run_task(self._scroll_to_bottom)
