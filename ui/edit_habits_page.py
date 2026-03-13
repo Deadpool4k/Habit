@@ -152,7 +152,7 @@ class EditHabitsPage(ft.Column):
         )
 
         save_btn = ft.ElevatedButton(
-            text="Save" if self._editing else "Add Habit",
+            "Save" if self._editing else "Add Habit",
             bgcolor=ACCENT,
             color=TEXT,
             on_click=self._on_save,
