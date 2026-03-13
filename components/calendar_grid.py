@@ -21,26 +21,29 @@ def _heat_color(count: int, max_count: int) -> str:
     return "#818cf8"
 
 
-class CalendarGrid(ft.UserControl):
+class CalendarGrid(ft.Container):
     """Monthly heatmap calendar showing habit completion intensity."""
 
     def __init__(self, year: int, month: int, heatmap_data: dict[str, int]):
-        super().__init__()
+        super().__init__(
+            bgcolor=CARD,
+            border_radius=8,
+            padding=12,
+        )
         self.year = year
         self.month = month
         self.heatmap_data = heatmap_data
 
-    def build(self):
-        max_count = max(self.heatmap_data.values(), default=1)
-        days_in_month = calendar.monthrange(self.year, self.month)[1]
-        first_weekday = calendar.monthrange(self.year, self.month)[0]  # 0=Mon
+        max_count = max(heatmap_data.values(), default=1)
+        days_in_month = calendar.monthrange(year, month)[1]
+        first_weekday = calendar.monthrange(year, month)[0]  # 0=Mon
 
         day_labels = [
             ft.Container(
                 width=32,
                 height=24,
                 content=ft.Text(d, size=10, color="#64748b", text_align=ft.TextAlign.CENTER),
-                alignment=ft.alignment.center,
+                alignment=ft.alignment.Alignment(0, 0),
             )
             for d in ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]
         ]
@@ -51,8 +54,8 @@ class CalendarGrid(ft.UserControl):
             cells.append(ft.Container(width=32, height=32))
 
         for day in range(1, days_in_month + 1):
-            date_str = f"{self.year:04d}-{self.month:02d}-{day:02d}"
-            count = self.heatmap_data.get(date_str, 0)
+            date_str = f"{year:04d}-{month:02d}-{day:02d}"
+            count = heatmap_data.get(date_str, 0)
             color = _heat_color(count, max_count)
             cells.append(
                 ft.Container(
@@ -67,7 +70,7 @@ class CalendarGrid(ft.UserControl):
                         color=TEXT,
                         text_align=ft.TextAlign.CENTER,
                     ),
-                    alignment=ft.alignment.center,
+                    alignment=ft.alignment.Alignment(0, 0),
                 )
             )
 
@@ -80,15 +83,10 @@ class CalendarGrid(ft.UserControl):
                 week.append(ft.Container(width=32, height=32))
             rows.append(ft.Row(week, spacing=2))
 
-        return ft.Container(
-            bgcolor=CARD,
-            border_radius=8,
-            padding=12,
-            content=ft.Column(
-                [
-                    ft.Text("Activity Heatmap", color=TEXT, size=14, weight=ft.FontWeight.BOLD),
-                    ft.Column(rows, spacing=2),
-                ],
-                spacing=8,
-            ),
+        self.content = ft.Column(
+            [
+                ft.Text("Activity Heatmap", color=TEXT, size=14, weight=ft.FontWeight.BOLD),
+                ft.Column(rows, spacing=2),
+            ],
+            spacing=8,
         )

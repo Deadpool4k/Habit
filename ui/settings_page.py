@@ -1,6 +1,5 @@
 """Settings page — API key, model, reminders, export."""
 import csv
-import io
 import json
 from datetime import date
 
@@ -20,43 +19,38 @@ DANGER = "#ef4444"
 MODELS = ["gpt-4o", "gpt-4-turbo", "gpt-3.5-turbo"]
 
 
-class SettingsPage(ft.UserControl):
+class SettingsPage(ft.Column):
     """Application settings: API key, model, reminders, data export."""
 
-    def __init__(self, page: ft.Page):
-        super().__init__(expand=True)
-        self.page = page
+    def __init__(self, flet_page: ft.Page):
+        super().__init__(expand=True, spacing=0)
+        self._page = flet_page
         self._config = load_config()
         self._api_ref = ft.Ref[ft.TextField]()
         self._model_ref = ft.Ref[ft.Dropdown]()
         self._reminder_ref = ft.Ref[ft.TextField]()
 
-    def build(self):
-        return ft.Column(
-            [
-                ft.Container(
-                    bgcolor=CARD,
-                    padding=ft.padding.symmetric(horizontal=20, vertical=12),
-                    content=ft.Text("⚙️ Settings", color=TEXT, size=20, weight=ft.FontWeight.BOLD),
-                ),
-                ft.Container(
+        self.controls = [
+            ft.Container(
+                bgcolor=CARD,
+                padding=ft.padding.symmetric(horizontal=20, vertical=12),
+                content=ft.Text("⚙️ Settings", color=TEXT, size=20, weight=ft.FontWeight.BOLD),
+            ),
+            ft.Container(
+                expand=True,
+                padding=16,
+                content=ft.Column(
+                    [
+                        self._build_ai_section(),
+                        self._build_reminder_section(),
+                        self._build_data_section(),
+                    ],
+                    scroll=ft.ScrollMode.AUTO,
+                    spacing=16,
                     expand=True,
-                    padding=16,
-                    content=ft.Column(
-                        [
-                            self._build_ai_section(),
-                            self._build_reminder_section(),
-                            self._build_data_section(),
-                        ],
-                        scroll=ft.ScrollMode.AUTO,
-                        spacing=16,
-                        expand=True,
-                    ),
                 ),
-            ],
-            expand=True,
-            spacing=0,
-        )
+            ),
+        ]
 
     # ------------------------------------------------------------------
     def _build_ai_section(self) -> ft.Container:
@@ -91,7 +85,7 @@ class SettingsPage(ft.UserControl):
             "Save Settings",
             bgcolor=ACCENT,
             color=TEXT,
-            icon=ft.icons.SAVE,
+            icon=ft.Icons.SAVE,
             on_click=self._on_save,
         )
 
@@ -132,7 +126,7 @@ class SettingsPage(ft.UserControl):
             "Save Reminder",
             bgcolor=ACCENT,
             color=TEXT,
-            icon=ft.icons.ALARM,
+            icon=ft.Icons.ALARM,
             on_click=self._on_save,
         )
 
@@ -173,7 +167,7 @@ class SettingsPage(ft.UserControl):
                                 "Export as JSON",
                                 bgcolor="#1e293b",
                                 color=TEXT,
-                                icon=ft.icons.DOWNLOAD,
+                                icon=ft.Icons.DOWNLOAD,
                                 on_click=self._on_export_json,
                                 style=ft.ButtonStyle(side=ft.BorderSide(1, "#334155")),
                             ),
@@ -181,7 +175,7 @@ class SettingsPage(ft.UserControl):
                                 "Export as CSV",
                                 bgcolor="#1e293b",
                                 color=TEXT,
-                                icon=ft.icons.TABLE_CHART,
+                                icon=ft.Icons.TABLE_CHART,
                                 on_click=self._on_export_csv,
                                 style=ft.ButtonStyle(side=ft.BorderSide(1, "#334155")),
                             ),
@@ -205,13 +199,11 @@ class SettingsPage(ft.UserControl):
     def _on_clear_chat(self, e):
         def do_clear(ev):
             mem_repo.clear_messages()
-            dialog.open = False
-            self.page.update()
+            self._page.close(dialog)
             self._show_snack("Chat history cleared.")
 
         def cancel(ev):
-            dialog.open = False
-            self.page.update()
+            self._page.close(dialog)
 
         dialog = ft.AlertDialog(
             title=ft.Text("Clear chat history?", color=TEXT),
@@ -222,9 +214,7 @@ class SettingsPage(ft.UserControl):
                 ft.ElevatedButton("Clear", bgcolor=DANGER, color=TEXT, on_click=do_clear),
             ],
         )
-        self.page.dialog = dialog
-        dialog.open = True
-        self.page.update()
+        self._page.open(dialog)
 
     def _on_export_json(self, e):
         conn = get_connection()
@@ -234,8 +224,8 @@ class SettingsPage(ft.UserControl):
 
         data = {"habits": habits, "habit_entries": entries, "journal_entries": journals}
         filename = f"habit_tracker_export_{date.today().isoformat()}.json"
-        with open(filename, "w") as f:
-            json.dump(data, f, indent=2)
+        with open(filename, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
         self._show_snack(f"Exported to {filename}")
 
     def _on_export_csv(self, e):
@@ -248,7 +238,7 @@ class SettingsPage(ft.UserControl):
         ).fetchall()
 
         filename = f"habit_entries_export_{date.today().isoformat()}.csv"
-        with open(filename, "w", newline="") as f:
+        with open(filename, "w", newline="", encoding="utf-8") as f:
             writer = csv.writer(f)
             writer.writerow(["habit_name", "icon", "date", "value"])
             for r in entries:
@@ -261,6 +251,4 @@ class SettingsPage(ft.UserControl):
             content=ft.Text(msg, color=TEXT),
             bgcolor=DANGER if error else SUCCESS,
         )
-        self.page.snack_bar = snack
-        snack.open = True
-        self.page.update()
+        self._page.open(snack)
