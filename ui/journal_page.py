@@ -40,6 +40,7 @@ class JournalPage(ft.Column):
         self._mood_row_ref = ft.Ref[ft.Row]()
         self._send_btn_ref = ft.Ref[ft.IconButton]()
         self._date_ref = ft.Ref[ft.Text]()
+        self._thinking_bubble = None
 
         self.controls = [
             ft.Container(
@@ -290,15 +291,21 @@ class JournalPage(ft.Column):
         if not user_text:
             return
 
+        # Clear input
         self._chat_input_ref.current.value = ""
         self._chat_input_ref.current.update()
 
-        # Optimistically add user bubble
+        # Disable send button to prevent double sends
+        if self._send_btn_ref.current:
+            self._send_btn_ref.current.disabled = True
+            self._send_btn_ref.current.update()
+
+        # Add user message to local list and refresh chat
         self._chat_messages.append({"role": "user", "content": user_text})
         self._refresh_chat()
 
-        # Show typing indicator
-        typing_bubble = ft.Container(
+        # Add single thinking indicator AFTER refresh
+        self._thinking_bubble = ft.Container(
             bgcolor=CARD,
             border_radius=8,
             padding=8,
@@ -306,19 +313,23 @@ class JournalPage(ft.Column):
             margin=ft.margin.only(right=60),
         )
         if self._chat_list_ref.current:
-            self._chat_list_ref.current.controls.append(typing_bubble)
+            self._chat_list_ref.current.controls.append(self._thinking_bubble)
             self._chat_list_ref.current.update()
 
         def call_ai():
             reply = ai_service.send_message(user_text, self._page)
             self._chat_messages.append({"role": "assistant", "content": reply})
-            if self._chat_list_ref.current:
-                # Remove typing indicator
+            # Remove thinking bubble
+            if self._chat_list_ref.current and self._thinking_bubble in self._chat_list_ref.current.controls:
                 try:
-                    self._chat_list_ref.current.controls.remove(typing_bubble)
+                    self._chat_list_ref.current.controls.remove(self._thinking_bubble)
                 except ValueError:
                     pass
             self._refresh_chat()
+            # Re-enable send button
+            if self._send_btn_ref.current:
+                self._send_btn_ref.current.disabled = False
+                self._send_btn_ref.current.update()
 
         threading.Thread(target=call_ai, daemon=True).start()
 
