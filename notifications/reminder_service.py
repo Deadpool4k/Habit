@@ -4,7 +4,7 @@ import time
 from datetime import datetime
 from config import load_config
 
-REMINDER_COOLDOWN_SECONDS = 61  # avoids double-trigger within the same minute
+REMINDER_COOLDOWN_SECONDS = 60  # sleep one full minute to avoid re-triggering in the same HH:MM window
 POLL_INTERVAL_SECONDS = 30
 
 
