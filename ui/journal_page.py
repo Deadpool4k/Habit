@@ -240,6 +240,11 @@ class JournalPage(ft.Column):
             )
         return bubbles
 
+    async def _scroll_to_bottom(self):
+        """Async scroll to the bottom of the chat list."""
+        if self._chat_list_ref.current:
+            await self._chat_list_ref.current.scroll_to_async(offset=-1, duration=300)
+
     # ──────────────────────────────────────────────────────────────────
     def _on_save_mood(self, e):
         """Save mood, stress, energy to today's journal entry."""
@@ -284,10 +289,7 @@ class JournalPage(ft.Column):
         if self._chat_list_ref.current:
             self._chat_list_ref.current.controls.append(self._thinking_bubble)
             self._chat_list_ref.current.update()
-            try:
-                self._chat_list_ref.current.scroll_to(offset=-1, duration=200)
-            except Exception:
-                pass
+            self._page.run_task(self._scroll_to_bottom)
 
         def call_ai():
             reply = ai_service.send_message(user_text, self._page)
@@ -308,7 +310,4 @@ class JournalPage(ft.Column):
         if self._chat_list_ref.current:
             self._chat_list_ref.current.controls = self._build_message_bubbles()
             self._chat_list_ref.current.update()
-            try:
-                self._chat_list_ref.current.scroll_to(offset=-1, duration=300)
-            except Exception:
-                pass
+            self._page.run_task(self._scroll_to_bottom)
