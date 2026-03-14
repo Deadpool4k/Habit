@@ -267,15 +267,19 @@ class EditHabitsPage(ft.Column):
 
     def _on_delete(self, habit: Habit):
         def confirm_delete(e):
+            # 1. Închidem fereastra corect
+            self._page.pop_dialog()
+            
+            # 2. Ștergem obiceiul
             habit_service.delete_habit(habit.id)
-            dialog.open = False
-            self._page.update()
+            
+            # 3. Refacem interfața și arătăm notificarea
             self._rebuild()
             self._show_snack(f"'{habit.name}' deleted.")
 
         def cancel(e):
-            dialog.open = False
-            self._page.update()
+            # Închidem fereastra dacă dă cancel
+            self._page.pop_dialog()
 
         dialog = ft.AlertDialog(
             title=ft.Text(f"Delete '{habit.name}'?", color=TEXT),
@@ -286,9 +290,8 @@ class EditHabitsPage(ft.Column):
                 ft.ElevatedButton("Delete", bgcolor=DANGER, color=TEXT, on_click=confirm_delete),
             ],
         )
-        self._page.dialog = dialog
-        dialog.open = True
-        self._page.update()
+        # Deschidem fereastra cu comanda care știm sigur că merge la tine
+        self._page.show_dialog(dialog)
 
     # ------------------------------------------------------------------
     def _rebuild(self):
@@ -303,6 +306,7 @@ class EditHabitsPage(ft.Column):
             content=ft.Text(msg, color=TEXT),
             bgcolor=DANGER if error else SUCCESS,
         )
-        self._page.snack_bar = snack
-        self._page.snack_bar.open = True
+        # O adăugăm direct peste interfață
+        self._page.overlay.append(snack)
+        snack.open = True
         self._page.update()
